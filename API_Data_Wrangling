@@ -1,0 +1,78 @@
+
+# Store the API key as a string - according to PEP8, constants are always named in all upper case
+API_KEY = 'XXX'
+
+import requests
+import json
+from operator import itemgetter
+
+# Now, call the Quandl API and pull out a small sample of the data (only one day) to get a glimpse
+# into the JSON structure that will be returned
+r = requests.get("https://www.quandl.com/api/v3/datasets/FSE/AFX_X.json?&start_date=2014-01-01&end_date=2014-01-01&api_key="+API_KEY)
+r_json=r.json()
+
+# Inspect the JSON structure of the object you created, and take note of how nested it is,
+# as well as the overall structure
+#print(r.json()['dataset_data']['data'])
+r_json
+
+#Collect data from the Franfurt Stock Exchange, for the ticker AFX_X, for the whole year 2017 (keep in mind that the date format is YYYY-MM-DD)
+FSE_2017=requests.get("https://www.quandl.com/api/v3/datasets/FSE/AFX_X.json?&start_date=2017-01-01&end_date=2017-12-31&api_key="+API_KEY)
+FSE_2017_json=FSE_2017.json()
+print(FSE_2017_json)
+
+#Convert the returned JSON object into a Python dictionary.
+print(type(FSE_2017_json))
+
+#Calculate what the highest and lowest opening prices were for the stock in this period.
+print(FSE_2017_json['dataset'].keys())
+print(FSE_2017_json['dataset']['column_names'])
+
+max_opening=max(filter(lambda x: x!=None,[row[1] for row in FSE_2017_json['dataset']['data']]))
+min_opening=min(filter(lambda x: x!=None,[row[1] for row in FSE_2017_json['dataset']['data']]))
+
+print('Max opening price in Year 2017 : $'+str("{0:.2f}".format(max_opening)))
+print('Min opening price in Year 2017 : $'+str("{0:.2f}".format(min_opening)))
+
+# Max opening price in Year 2017 : $53.11
+# Min opening price in Year 2017 : $34.00
+
+#What was the largest change in any one day (based on High and Low price)?
+max_change=max([(row[2]-row[3]) for row in FSE_2017_json['dataset']['data']])
+
+print('Largest change in any one day in Year 2017 : $'+str("{0:.2f}".format(max_change)))
+
+#Largest change in any one day in Year 2017 : $2.81
+
+#What was the largest change between any two days (based on Closing Price)?
+max_v=0
+for i,j in enumerate([row[4] for row in FSE_2017_json['dataset']['data']][:-1]):
+    max_v=max(max_v,abs(j-[row[4] for row in FSE_2017_json['dataset']['data']][i+1]))
+    
+print('Largest change between any two days (based on Closing Price) : $'+str("{0:.2f}".format(max_v)))
+
+#Largest change between any two days (based on Closing Price) : $2.56
+
+#What was the average daily trading volume during this year?
+avg_vol=sum([row[6] for row in FSE_2017_json['dataset']['data']])/len([row[6] for row in FSE_2017_json['dataset']['data']])
+print('The average daily trading volume during 2017: $'+str("{0:.2f}".format(avg_vol)))
+
+#The average daily trading volume during 2017: $89124.34
+
+#What was the median trading volume during this year?
+def median(tvolume):
+    sorted_tvolume = sorted(tvolume)
+    tlength = len(tvolume)
+    index = (tlength - 1) // 2
+
+    if (tlength % 2):
+        return sorted_tvolume[index]
+    else:
+        return (sorted_tvolume[index] + sorted_tvolume[index + 1])/2.0
+
+
+tmedian=median([row[6] for row in FSE_2017_json['dataset']['data']])
+
+print('The median trading volume during 2017: $'+str("{0:.2f}".format(tmedian)))
+
+#The median trading volume during 2017: $76286.00
