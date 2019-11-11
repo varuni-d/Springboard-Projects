@@ -38,23 +38,35 @@ WHERE facid IN (1,5)
 more than $100? Return the name and monthly maintenance of the facilities
 in question. */
 
-SELECT name,
-		monthlymaintenance,
-		CASE WHEN monthlymaintenance>100 THEN 'Expensive'
-		ELSE 'Cheap' END AS label
+SELECT name,monthlymaintenance,
+	CASE WHEN monthlymaintenance>100 THEN 'Expensive'
+	ELSE 'Cheap' END AS label
 FROM Facilities
 
 /* Q6: You'd like to get the first and last name of the last member(s)
 who signed up. Do not use the LIMIT clause for your solution. */
 
-WITH last AS(
-  SELECT 
+SELECT firstname, surname
+FROM Members
+WHERE joindate IN 
+	(SELECT MAX(joindate)
+	FROM Members)
 
 
 /* Q7: How can you produce a list of all members who have used a tennis court?
 Include in your output the name of the court, and the name of the member
 formatted as a single column. Ensure no duplicate data, and order by
 the member name. */
+
+SELECT sub.name, CONCAT(m.firstname,m.surname) AS name
+FROM Members m
+JOIN (SELECT f.name,b.memid
+     FROM Facilities f
+     JOIN Bookings b
+     ON b.facid=f.facid 
+     WHERE f.name LIKE 'Tennis%')sub
+ON m.memid=sub.memid
+
 
 
 /* Q8: How can you produce a list of bookings on the day of 2012-09-14 which
@@ -64,13 +76,48 @@ the guest user's ID is always 0. Include in your output the name of the
 facility, the name of the member formatted as a single column, and the cost.
 Order by descending cost, and do not use any subqueries. */
 
+SELECT f.name AS facility_name, CONCAT(m.firstname,' ',m.surname) AS name,
+     CASE WHEN b.memid=0 THEN f.guestcost*b.slots
+     ELSE f.membercost*b.slots END AS cost
+FROM Members m
+INNER JOIN Bookings b
+ON m.memid=b.memid AND LEFT(b.starttime,10)='2012-09-14'
+INNER JOIN Facilities f
+ON f.facid=b.facid AND
+ (b.memid=0 AND f.guestcost*b.slots>30) OR
+(b.memid!=0 AND f.membercost*b.slots>30)
+ORDER BY cost DESC
+
 
 /* Q9: This time, produce the same result as in Q8, but using a subquery. */
 
+SELECT sub.name AS facility_name, CONCAT(m.firstname,' ',m.surname) AS name,
+     CASE WHEN m.memid=0 THEN sub.guestcost*sub.slots
+     ELSE sub.membercost*sub.slots END AS cost
+FROM Members m
+INNER JOIN (SELECT b.memid,b.starttime,f.name,f.guestcost,f.membercost,b.slots  
+            FROM Bookings b
+            INNER JOIN Facilities f
+             ON f.facid=b.facid AND
+            (b.memid=0 AND f.guestcost*b.slots>30) OR
+            (b.memid!=0 AND f.membercost*b.slots>30))sub
+ON m.memid=sub.memid AND LEFT(sub.starttime,10)='2012-09-14'                        
+ORDER BY cost DESC
 
 /* Q10: Produce a list of facilities with a total revenue less than 1000.
 The output of facility name and total revenue, sorted by revenue. Remember
 that there's a different cost for guests and members! */
+
+
+SELECT f.name AS facility_name, 
+	SUM(CASE WHEN b.memid=0 THEN f.guestcost*b.slots
+        ELSE f.membercost*b.slots END) AS tot_revenue 
+FROM Bookings b
+INNER JOIN Facilities f
+ON b.facid=f.facid
+GROUP BY f.name
+HAVING tot_revenue<1000
+ORDER BY tot_revenue 
 
 
 
